@@ -26,7 +26,6 @@ def log_time():
 def human_delay():
     ist = get_ist()
 
-    # Evening logout → larger randomness
     if ist.hour >= 18:
         delay = random.randint(0, 900)  # up to 15 min
     else:
@@ -41,7 +40,7 @@ def load_data():
         with open(FILE, "r") as f:
             return json.load(f)
     except:
-        return {"days": {}, "total_hours": 0}
+        return {"months": {}}
 
 def save_data(data):
     with open(FILE, "w") as f:
@@ -51,19 +50,33 @@ def get_today():
     now = get_ist()
     return now.strftime("%Y-%m-%d"), now
 
+def get_month_key(now):
+    return now.strftime("%Y-%m")
+
 # ===== RECORD LOGS =====
 def record_time(event_type):
     data = load_data()
     today, now = get_today()
+    month_key = get_month_key(now)
 
-    if today not in data["days"]:
-        data["days"][today] = {
+    # Create month if not exists
+    if month_key not in data["months"]:
+        data["months"][month_key] = {
+            "days": {},
+            "total_hours": 0
+        }
+
+    month = data["months"][month_key]
+
+    # Create day if not exists
+    if today not in month["days"]:
+        month["days"][today] = {
             "morning": {},
             "afternoon": {},
             "total": 0
         }
 
-    day = data["days"][today]
+    day = month["days"][today]
     time_str = now.strftime("%H:%M:%S")
 
     if event_type == "login_morning":
@@ -71,6 +84,7 @@ def record_time(event_type):
 
     elif event_type == "logout_lunch":
         day["morning"]["out"] = time_str
+
         if "in" in day["morning"]:
             t1 = datetime.strptime(day["morning"]["in"], "%H:%M:%S")
             t2 = datetime.strptime(time_str, "%H:%M:%S")
@@ -82,12 +96,14 @@ def record_time(event_type):
 
     elif event_type == "logout_evening":
         day["afternoon"]["out"] = time_str
+
         if "in" in day["afternoon"]:
             t1 = datetime.strptime(day["afternoon"]["in"], "%H:%M:%S")
             t2 = datetime.strptime(time_str, "%H:%M:%S")
             hours = (t2 - t1).seconds / 3600
             day["afternoon"]["hours"] = round(hours, 2)
 
+        # Calculate total
         total = 0
         if "hours" in day["morning"]:
             total += day["morning"]["hours"]
@@ -95,10 +111,14 @@ def record_time(event_type):
             total += day["afternoon"]["hours"]
 
         day["total"] = round(total, 2)
-        data["total_hours"] += day["total"]
+
+        # Update monthly total
+        month["total_hours"] = round(
+            sum(d.get("total", 0) for d in month["days"].values()), 2
+        )
 
     save_data(data)
-    print(f"📊 Updated log for {today}")
+    print(f"📊 Updated {today} in {month_key}")
 
 # ===== LOGIN CHECK =====
 def is_logged_in(page):
@@ -113,12 +133,18 @@ def login(page):
     page.wait_for_timeout(6000)
 
     inputs = page.locator("input")
-    inputs.nth(0).fill(USERNAME)
-    inputs.nth(1).fill(PASSWORD)
 
+    if inputs.count() >= 2:
+        inputs.nth(0).fill(USERNAME)
+        inputs.nth(1).fill(PASSWORD)
+    else:
+        print("❌ Login fields not found")
+        return
+
+    page.wait_for_selector('button:has-text("Login")', timeout=10000)
     page.locator("button").filter(has_text="Login").click()
-    page.wait_for_timeout(6000)
 
+    page.wait_for_timeout(6000)
     print("✅ Logged in")
 
 # ===== ENSURE LOGIN =====
@@ -149,6 +175,7 @@ def handle_action(action):
 
         if action == "login":
             if not signed_in:
+                page.wait_for_selector("text=Sign In", timeout=10000)
                 page.locator("text=Sign In").first.click()
 
                 if ist_now.hour < 13:
@@ -162,6 +189,7 @@ def handle_action(action):
 
         elif action == "logout":
             if signed_in:
+                page.wait_for_selector("text=Sign Out", timeout=10000)
                 page.locator("text=Sign Out").first.click()
 
                 if ist_now.hour < 15:
