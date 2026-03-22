@@ -1,0 +1,36 @@
+name: HR Login
+
+on:
+  schedule:
+    # 🕒 9:25 AM IST (03:55 UTC) — Morning login
+    - cron: "55 3 * * 1-6"
+
+    # 🕒 2:00 PM IST (08:30 UTC) — Lunch return login
+    - cron: "30 8 * * 1-6"
+
+  workflow_dispatch:
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install
+
+      - name: Run Login Bot
+        run: python hr_bot.py
+        env:
+          HR_USERNAME: ${{ secrets.HR_USERNAME }}
+          HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
+          ACTION: "login"
