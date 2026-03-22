@@ -150,7 +150,7 @@ for date, d in month_data["days"].items():
         "A-Hours": d.get("afternoon", {}).get("hours", 0),
 
         # TOTAL
-        "Total": d.get("Total Hours", 0)
+        "Total": d.get("total", 0)
     })
 
 df = pd.DataFrame(rows)
@@ -164,13 +164,13 @@ st.dataframe(df, use_container_width=True)
 # ===== CHART =====
 st.subheader("📈 Daily Hours")
 if not df.empty:
-    st.line_chart(df.set_index("Date")["Total Hours"])
+    st.line_chart(df.set_index("Date")["Total"])
 
 # ===== WEEKLY =====
 st.subheader("📅 Weekly Breakdown")
 if not df.empty:
     df["Week"] = pd.to_datetime(df["Date"], format="%d/%m").dt.isocalendar().week
-    weekly = df.groupby("Week")["Total Hours"].sum()
+    weekly = df.groupby("Week")["Total"].sum()
     st.bar_chart(weekly)
 
 # ===== SMART INSIGHTS =====
