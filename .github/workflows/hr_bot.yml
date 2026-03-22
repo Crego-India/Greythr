@@ -1,0 +1,30 @@
+name: HR Login
+
+on:
+  schedule:
+    # Morning login (Mon–Sat)
+    - cron: "55 3 * * 1-6"
+
+    # Lunch return login
+    - cron: "30 8 * * 1-6"
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - run: |
+          pip install -r requirements.txt
+          playwright install
+
+      - run: python hr_bot.py
+        env:
+          HR_USERNAME: ${{ secrets.HR_USERNAME }}
+          HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
+          ACTION: login
