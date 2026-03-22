@@ -2,10 +2,10 @@ name: HR Login
 
 on:
   schedule:
-    # 🕒 9:25 AM IST (03:55 UTC) — Morning login
+    # 🕒 9:25 AM IST (03:55 UTC)
     - cron: "55 3 * * 1-6"
 
-    # 🕒 2:00 PM IST (08:30 UTC) — Lunch return login
+    # 🕒 2:00 PM IST (08:30 UTC)
     - cron: "30 8 * * 1-6"
 
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          playwright install
+          playwright install --with-deps
 
       - name: Run Login Bot
         run: python hr_bot.py
