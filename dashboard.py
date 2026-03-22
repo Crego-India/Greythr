@@ -150,7 +150,7 @@ for date, d in month_data["days"].items():
         "A-Hours": d.get("afternoon", {}).get("hours", 0),
 
         # TOTAL
-        "Total": d.get("total", 0)
+        "Total": d.get("Total Hours", 0)
     })
 
 df = pd.DataFrame(rows)
