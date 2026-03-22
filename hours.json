@@ -1,4 +1,12 @@
 {
-  "days": {},
+  "days": {
+    "2026-03-22": {
+      "morning": {},
+      "afternoon": {
+        "in": "13:01:00"
+      },
+      "total": 0
+    }
+  },
   "total_hours": 0
 }
