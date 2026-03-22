@@ -34,3 +34,12 @@ jobs:
           HR_USERNAME: ${{ secrets.HR_USERNAME }}
           HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
           ACTION: "login"
+
+      # 👇 ADD THIS AT END
+      - name: Commit updated hours
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add hours.json
+          git commit -m "update hours" || echo "No changes"
+          git push
