@@ -1,6 +1,8 @@
 from playwright.sync_api import sync_playwright
 import time
 import os
+import random
+import json
 from datetime import datetime, timedelta
 
 HR_URL = "https://ziegleraerospace.greythr.com/"
@@ -12,8 +14,14 @@ PASSWORD = os.getenv("HR_PASSWORD")
 def log_time():
     utc = datetime.utcnow()
     ist = utc + timedelta(hours=5, minutes=30)
-    print("🕒 UTC Time:", utc)
-    print("🕒 IST Time:", ist)
+    print("🕒 UTC:", utc)
+    print("🕒 IST:", ist)
+
+# ===== HUMAN DELAY =====
+def human_delay():
+    delay = random.randint(30, 150)  # 30 sec to 5 min
+    print(f"⏳ Human delay: {delay}s")
+    time.sleep(delay)
 
 # ===== LOGIN CHECK =====
 def is_logged_in(page):
@@ -26,28 +34,20 @@ def is_signed_in(page):
 # ===== LOGIN FUNCTION =====
 def login(page):
     page.goto(HR_URL)
-
-    # wait for page to fully load
     page.wait_for_timeout(6000)
 
     print("🔍 Finding login fields...")
 
-    # Find ALL input boxes
     inputs = page.locator("input")
 
-    # Fill username (first input)
     inputs.nth(0).fill(USERNAME)
-
-    # Fill password (second input)
     inputs.nth(1).fill(PASSWORD)
 
     print("✅ Filled credentials")
 
-    # Click login button (flexible)
     page.locator("button").filter(has_text="Login").click()
 
     page.wait_for_timeout(6000)
-
     print("✅ Logged in")
 
 # ===== ENSURE LOGIN =====
@@ -55,12 +55,31 @@ def ensure_logged_in(page):
     page.goto(HR_URL)
     page.wait_for_timeout(5000)
 
-    # If login page detected → login
     if page.locator("text=Login").count() > 0:
         print("🔐 Logging in...")
         login(page)
     else:
         print("✅ Already logged in")
+
+# ===== HOURS TRACKING =====
+FILE = "hours.json"
+
+def load_hours():
+    try:
+        with open(FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {"total_hours": 0}
+
+def save_hours(data):
+    with open(FILE, "w") as f:
+        json.dump(data, f)
+
+def update_hours(hours_today=8.5):
+    data = load_hours()
+    data["total_hours"] += hours_today
+    save_hours(data)
+    print(f"📊 Total hours: {data['total_hours']}")
 
 # ===== HANDLE ACTION =====
 def handle_action(action):
@@ -69,25 +88,33 @@ def handle_action(action):
         page = browser.new_page()
 
         log_time()
-        ensure_logged_in(page)
+        human_delay()  # 👈 human-like timing
 
+        ensure_logged_in(page)
         page.wait_for_timeout(3000)
 
         signed_in = is_signed_in(page)
 
         if action == "login":
             if not signed_in:
-                page.wait_for_selector('button:has-text("Sign In")', timeout=10000)
-                page.click('button:has-text("Sign In")')
+                page.wait_for_selector('text=Sign In', timeout=10000)
+                page.locator("text=Sign In").first.click()
                 print("🟢 Signed In")
             else:
                 print("Already signed in")
 
         elif action == "logout":
             if signed_in:
-                page.wait_for_selector('button:has-text("Sign Out")', timeout=10000)
-                page.click('button:has-text("Sign Out")')
+                page.wait_for_selector('text=Sign Out', timeout=10000)
+                page.locator("text=Sign Out").first.click()
                 print("🔴 Signed Out")
+
+                # Only count evening logout (important)
+                ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+
+                if ist_now.hour >= 18:
+                    update_hours(8.5)
+
             else:
                 print("Already signed out")
 
