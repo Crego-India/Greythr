@@ -2,10 +2,10 @@ name: HR Logout
 
 on:
   schedule:
-    # 🕒 1:00 PM IST (07:30 UTC) — Lunch logout
+    # 🕒 1:00 PM IST (07:30 UTC)
     - cron: "30 7 * * 1-6"
 
-    # 🕒 6:50 PM IST (13:20 UTC) — Evening logout
+    # 🕒 6:50 PM IST (13:20 UTC)
     - cron: "20 13 * * 1-6"
 
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          playwright install
+          playwright install --with-deps
 
       - name: Run Logout Bot
         run: python hr_bot.py
