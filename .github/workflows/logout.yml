@@ -1,0 +1,36 @@
+name: HR Logout
+
+on:
+  schedule:
+    # 🕒 1:00 PM IST (07:30 UTC) — Lunch logout
+    - cron: "30 7 * * 1-6"
+
+    # 🕒 6:50 PM IST (13:20 UTC) — Evening logout
+    - cron: "20 13 * * 1-6"
+
+  workflow_dispatch:
+
+jobs:
+  logout:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install
+
+      - name: Run Logout Bot
+        run: python hr_bot.py
+        env:
+          HR_USERNAME: ${{ secrets.HR_USERNAME }}
+          HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
+          ACTION: "logout"
