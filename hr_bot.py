@@ -10,44 +10,108 @@ HR_URL = "https://ziegleraerospace.greythr.com/"
 USERNAME = os.getenv("HR_USERNAME")
 PASSWORD = os.getenv("HR_PASSWORD")
 
-# ===== TIME LOG =====
+FILE = "hours.json"
+
+# ===== TIME =====
+def get_ist():
+    return datetime.utcnow() + timedelta(hours=5, minutes=30)
+
 def log_time():
     utc = datetime.utcnow()
-    ist = utc + timedelta(hours=5, minutes=30)
+    ist = get_ist()
     print("🕒 UTC:", utc)
     print("🕒 IST:", ist)
 
 # ===== HUMAN DELAY =====
 def human_delay():
-    delay = random.randint(30, 150)  # 30 sec to 5 min
+    delay = random.randint(30, 300)
     print(f"⏳ Human delay: {delay}s")
     time.sleep(delay)
+
+# ===== DATA HANDLING =====
+def load_data():
+    try:
+        with open(FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {"days": {}, "total_hours": 0}
+
+def save_data(data):
+    with open(FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def get_today():
+    now = get_ist()
+    return now.strftime("%Y-%m-%d"), now
+
+# ===== RECORD LOGS =====
+def record_time(event_type):
+    data = load_data()
+    today, now = get_today()
+
+    if today not in data["days"]:
+        data["days"][today] = {
+            "morning": {},
+            "afternoon": {},
+            "total": 0
+        }
+
+    day = data["days"][today]
+    time_str = now.strftime("%H:%M:%S")
+
+    if event_type == "login_morning":
+        day["morning"]["in"] = time_str
+
+    elif event_type == "logout_lunch":
+        day["morning"]["out"] = time_str
+        if "in" in day["morning"]:
+            t1 = datetime.strptime(day["morning"]["in"], "%H:%M:%S")
+            t2 = datetime.strptime(time_str, "%H:%M:%S")
+            hours = (t2 - t1).seconds / 3600
+            day["morning"]["hours"] = round(hours, 2)
+
+    elif event_type == "login_afternoon":
+        day["afternoon"]["in"] = time_str
+
+    elif event_type == "logout_evening":
+        day["afternoon"]["out"] = time_str
+        if "in" in day["afternoon"]:
+            t1 = datetime.strptime(day["afternoon"]["in"], "%H:%M:%S")
+            t2 = datetime.strptime(time_str, "%H:%M:%S")
+            hours = (t2 - t1).seconds / 3600
+            day["afternoon"]["hours"] = round(hours, 2)
+
+        total = 0
+        if "hours" in day["morning"]:
+            total += day["morning"]["hours"]
+        if "hours" in day["afternoon"]:
+            total += day["afternoon"]["hours"]
+
+        day["total"] = round(total, 2)
+        data["total_hours"] += day["total"]
+
+    save_data(data)
+    print(f"📊 Updated log for {today}")
 
 # ===== LOGIN CHECK =====
 def is_logged_in(page):
     return page.locator("text=Home").count() > 0
 
-# ===== SIGN STATE =====
 def is_signed_in(page):
     return page.locator("text=Sign Out").count() > 0
 
-# ===== LOGIN FUNCTION =====
+# ===== LOGIN =====
 def login(page):
     page.goto(HR_URL)
     page.wait_for_timeout(6000)
 
-    print("🔍 Finding login fields...")
-
     inputs = page.locator("input")
-
     inputs.nth(0).fill(USERNAME)
     inputs.nth(1).fill(PASSWORD)
 
-    print("✅ Filled credentials")
-
     page.locator("button").filter(has_text="Login").click()
-
     page.wait_for_timeout(6000)
+
     print("✅ Logged in")
 
 # ===== ENSURE LOGIN =====
@@ -61,66 +125,50 @@ def ensure_logged_in(page):
     else:
         print("✅ Already logged in")
 
-# ===== HOURS TRACKING =====
-FILE = "hours.json"
-
-def load_hours():
-    try:
-        with open(FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {"total_hours": 0}
-
-def save_hours(data):
-    with open(FILE, "w") as f:
-        json.dump(data, f)
-
-def update_hours(hours_today=8.5):
-    data = load_hours()
-    data["total_hours"] += hours_today
-    save_hours(data)
-    print(f"📊 Total hours: {data['total_hours']}")
-
-# ===== HANDLE ACTION =====
+# ===== MAIN ACTION =====
 def handle_action(action):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
         log_time()
-        human_delay()  # 👈 human-like timing
+        human_delay()
 
         ensure_logged_in(page)
         page.wait_for_timeout(3000)
 
         signed_in = is_signed_in(page)
+        ist_now = get_ist()
 
         if action == "login":
             if not signed_in:
-                page.wait_for_selector('text=Sign In', timeout=10000)
                 page.locator("text=Sign In").first.click()
+
+                if ist_now.hour < 13:
+                    record_time("login_morning")
+                else:
+                    record_time("login_afternoon")
+
                 print("🟢 Signed In")
             else:
                 print("Already signed in")
 
         elif action == "logout":
             if signed_in:
-                page.wait_for_selector('text=Sign Out', timeout=10000)
                 page.locator("text=Sign Out").first.click()
+
+                if ist_now.hour < 15:
+                    record_time("logout_lunch")
+                else:
+                    record_time("logout_evening")
+
                 print("🔴 Signed Out")
-
-                # Only count evening logout (important)
-                ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
-
-                if ist_now.hour >= 18:
-                    update_hours(8.5)
-
             else:
                 print("Already signed out")
 
         browser.close()
 
-# ===== MAIN =====
+# ===== ENTRY =====
 if __name__ == "__main__":
     action = os.getenv("ACTION")
     handle_action(action)
