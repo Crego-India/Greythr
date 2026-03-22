@@ -1,94 +1,121 @@
 import streamlit as st
 import json
 import pandas as pd
+from datetime import datetime
+import calendar
+import requests
+import base64
 
 FILE = "hours.json"
 
+# ===== GITHUB CONFIG =====
+TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO = st.secrets["REPO_NAME"]
+FILE_PATH = st.secrets["FILE_PATH"]
+
 # ===== LOAD DATA =====
 def load_data():
-    try:
-        with open(FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {"months": {}}
+    with open(FILE, "r") as f:
+        return json.load(f)
 
+def save_to_github(data):
+    url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
+
+    headers = {
+        "Authorization": f"token {TOKEN}"
+    }
+
+    # Get SHA
+    res = requests.get(url, headers=headers)
+    sha = res.json()["sha"]
+
+    content = base64.b64encode(
+        json.dumps(data, indent=2).encode()
+    ).decode()
+
+    payload = {
+        "message": "update holidays/leaves",
+        "content": content,
+        "sha": sha
+    }
+
+    requests.put(url, headers=headers, json=payload)
+
+# ===== MAIN =====
 data = load_data()
-
-st.set_page_config(page_title="Attendance Dashboard", layout="wide")
 
 st.title("📊 Attendance Dashboard")
 
-months = list(data.get("months", {}).keys())
-
-if not months:
-    st.warning("⚠️ No data available yet")
-    st.stop()
-
-# ===== MONTH SELECT =====
-selected_month = st.selectbox(
-    "📅 Select Month",
-    sorted(months, reverse=True)
-)
+months = list(data["months"].keys())
+selected_month = st.selectbox("Select Month", months[::-1])
 
 month_data = data["months"][selected_month]
 
-# ===== PREPARE TABLE =====
-rows = []
+holidays = month_data.get("holidays", [])
+leaves = month_data.get("leaves", [])
 
-for date, d in month_data["days"].items():
+# ===== ADD CONTROLS =====
+st.subheader("⚙️ Manage Holidays & Leaves")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    new_holiday = st.date_input("Add Holiday")
+    if st.button("Add Holiday"):
+        date_str = new_holiday.strftime("%Y-%m-%d")
+        if date_str not in holidays:
+            holidays.append(date_str)
+            month_data["holidays"] = holidays
+            save_to_github(data)
+            st.success("Holiday added")
+
+with col2:
+    new_leave = st.date_input("Add Leave")
+    if st.button("Add Leave"):
+        date_str = new_leave.strftime("%Y-%m-%d")
+        if date_str not in leaves:
+            leaves.append(date_str)
+            month_data["leaves"] = leaves
+            save_to_github(data)
+            st.success("Leave added")
+
+# ===== DISPLAY =====
+st.write("### Holidays:", holidays)
+st.write("### Leaves:", leaves)
+
+# ===== TARGET =====
+def get_target():
+    year, month = map(int, selected_month.split("-"))
+    cal = calendar.monthcalendar(year, month)
+
+    working_days = 0
+
+    for week in cal:
+        for i, day in enumerate(week):
+            date_str = f"{selected_month}-{str(day).zfill(2)}"
+            if day != 0 and i != 6 and date_str not in holidays:
+                working_days += 1
+
+    return working_days * 9
+
+target = get_target()
+total = month_data.get("total_hours", 0)
+
+st.metric("Total Hours", total)
+st.metric("Target", target)
+st.metric("Remaining", target - total)
+
+# ===== TABLE =====
+rows = []
+for d, val in month_data["days"].items():
     rows.append({
-        "Date": date,
-        "Morning In": d.get("morning", {}).get("in", ""),
-        "Morning Out": d.get("morning", {}).get("out", ""),
-        "Morning Hours": d.get("morning", {}).get("hours", 0),
-        "Afternoon In": d.get("afternoon", {}).get("in", ""),
-        "Afternoon Out": d.get("afternoon", {}).get("out", ""),
-        "Afternoon Hours": d.get("afternoon", {}).get("hours", 0),
-        "Total Hours": d.get("total", 0)
+        "Date": d,
+        "Total": val.get("total", 0)
     })
 
 df = pd.DataFrame(rows)
-
-if not df.empty:
-    df = df.sort_values(by="Date")
-
-# ===== SUMMARY =====
-total_hours = month_data.get("total_hours", 0)
-target = 216
-remaining = max(target - total_hours, 0)
-progress = min(total_hours / target, 1.0)
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric("📊 Total Hours", round(total_hours, 2))
-col2.metric("🎯 Target", target)
-col3.metric("⏳ Remaining", round(remaining, 2))
-
-st.progress(progress)
-st.write(f"📈 Progress: {round(progress * 100, 2)}% of 216 hours")
-
-# ===== TABLE =====
-st.subheader(f"📅 Logs for {selected_month}")
-st.dataframe(df, use_container_width=True)
+st.dataframe(df)
 
 # ===== CHART =====
-st.subheader("📊 Daily Hours")
-
 if not df.empty:
-    st.bar_chart(df.set_index("Date")["Total Hours"])
-
-# ===== INSIGHTS (SMART ADDITION) =====
-st.subheader("🧠 Insights")
-
-if total_hours > 0:
-    working_days = len(df)
-    avg_hours = total_hours / working_days if working_days > 0 else 0
-
-    st.write(f"📌 Avg hours/day: **{round(avg_hours, 2)} hrs**")
-
-    remaining_days_estimate = max(1, 26 - working_days)
-    needed_per_day = remaining / remaining_days_estimate
-
-    st.write(f"🎯 Needed per day to hit 216: **{round(needed_per_day, 2)} hrs/day**")
-else:
-    st.write("No sufficient data yet")
+    st.line_chart(df.set_index("Date")["Total"])
