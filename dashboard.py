@@ -13,6 +13,8 @@ TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO = st.secrets["REPO_NAME"]
 FILE_PATH = st.secrets["FILE_PATH"]
 
+data = load_data()
+
 # ===== LOAD DATA =====
 def load_data():
     with open(FILE, "r") as f:
@@ -58,7 +60,7 @@ col1, col2 = st.columns([4, 1])
 with col1:
     st.title("📊 Attendance Dashboard")
 
-months = list(data["months"].keys())
+months = list(data.get("months", {}).keys())
 
 month_map = {
     m: datetime.strptime(m, "%Y-%m").strftime("%B")
