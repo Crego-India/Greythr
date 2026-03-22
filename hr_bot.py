@@ -26,15 +26,28 @@ def is_signed_in(page):
 # ===== LOGIN FUNCTION =====
 def login(page):
     page.goto(HR_URL)
-    page.wait_for_timeout(5000)
 
-    page.fill('input[placeholder="Login ID"]', USERNAME)
-    page.fill('input[type="password"]', PASSWORD)
+    # wait for page to fully load
+    page.wait_for_timeout(6000)
 
-    page.wait_for_selector('button:has-text("Login")', timeout=10000)
-    page.click('button:has-text("Login")')
+    print("🔍 Finding login fields...")
 
-    page.wait_for_timeout(5000)
+    # Find ALL input boxes
+    inputs = page.locator("input")
+
+    # Fill username (first input)
+    inputs.nth(0).fill(USERNAME)
+
+    # Fill password (second input)
+    inputs.nth(1).fill(PASSWORD)
+
+    print("✅ Filled credentials")
+
+    # Click login button (flexible)
+    page.locator("button").filter(has_text="Login").click()
+
+    page.wait_for_timeout(6000)
+
     print("✅ Logged in")
 
 # ===== ENSURE LOGIN =====
