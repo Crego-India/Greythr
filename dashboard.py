@@ -174,18 +174,38 @@ if not df.empty:
     st.bar_chart(weekly)
 
 # ===== SMART INSIGHTS =====
+# ===== SMART INSIGHTS =====
 st.subheader("🧠 Smart Insights")
 
 if total_hours > 0:
+
+    # ===== AVERAGE =====
     avg = total_hours / working_days if working_days else 0
     st.write(f"📌 Avg/day: **{round(avg,2)} hrs**")
 
+    # ===== REMAINING DAYS =====
     remaining_days = max(1, working_days - len(df))
-    needed = remaining / remaining_days
 
-    if needed > 9:
-        st.error(f"⚠️ Need {round(needed,2)} hrs/day (high!)")
-    elif needed < 6:
-        st.success("✅ You are ahead")
+    # ===== STRICT (9 hrs/day) =====
+    needed_9 = remaining / remaining_days
+
+    st.write("### 🎯 Based on 9 hrs/day target")
+    if needed_9 > 9:
+        st.error(f"⚠️ Need **{round(needed_9,2)} hrs/day** (high pressure)")
+    elif needed_9 < 6:
+        st.success(f"✅ You are ahead (only {round(needed_9,2)} hrs/day needed)")
     else:
-        st.info(f"👉 Maintain ~{round(needed,2)} hrs/day")
+        st.info(f"👉 Maintain **{round(needed_9,2)} hrs/day**")
+
+    # ===== RELAXED (8 hrs/day) =====
+    relaxed_target = working_days * 8
+    relaxed_remaining = max(relaxed_target - total_hours, 0)
+    needed_8 = relaxed_remaining / remaining_days
+
+    st.write("### 😌 Based on 8 hrs/day (comfortable pace)")
+    if needed_8 > 8:
+        st.warning(f"⚠️ Need **{round(needed_8,2)} hrs/day**")
+    elif needed_8 < 6:
+        st.success(f"✅ Very relaxed ({round(needed_8,2)} hrs/day enough)")
+    else:
+        st.info(f"👉 Maintain **{round(needed_8,2)} hrs/day**")
