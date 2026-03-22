@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 import requests
 import base64
@@ -13,14 +13,13 @@ TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO = st.secrets["REPO_NAME"]
 FILE_PATH = st.secrets["FILE_PATH"]
 
-# ===== LOAD =====
+# ===== LOAD DATA =====
 def load_data():
     with open(FILE, "r") as f:
         return json.load(f)
 
 def save_to_github(data):
     url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
-
     headers = {"Authorization": f"token {TOKEN}"}
 
     res = requests.get(url, headers=headers)
@@ -38,7 +37,6 @@ def save_to_github(data):
 
     requests.put(url, headers=headers, json=payload)
 
-# ===== LOAD DATA =====
 data = load_data()
 
 st.set_page_config(page_title="Attendance Dashboard", layout="wide")
@@ -51,7 +49,6 @@ with col1:
 
 months = list(data["months"].keys())
 
-# Month names
 month_map = {
     m: datetime.strptime(m, "%Y-%m").strftime("%B")
     for m in months
@@ -66,24 +63,24 @@ month_data = data["months"][selected_month]
 holidays = month_data.get("holidays", [])
 leaves = month_data.get("leaves", [])
 
-# ===== POPUP CONTROL =====
+# ===== MANAGE HOLIDAYS / LEAVES =====
 with st.expander("⚙️ Manage Holidays & Leaves"):
-    col1, col2 = st.columns(2)
+    c1, c2 = st.columns(2)
 
-    with col1:
-        new_holiday = st.date_input("Add Holiday")
+    with c1:
+        h = st.date_input("Add Holiday")
         if st.button("➕ Add Holiday"):
-            d = new_holiday.strftime("%Y-%m-%d")
+            d = h.strftime("%Y-%m-%d")
             if d not in holidays:
                 holidays.append(d)
                 month_data["holidays"] = holidays
                 save_to_github(data)
                 st.success("Holiday added")
 
-    with col2:
-        new_leave = st.date_input("Add Leave")
+    with c2:
+        l = st.date_input("Add Leave")
         if st.button("➕ Add Leave"):
-            d = new_leave.strftime("%Y-%m-%d")
+            d = l.strftime("%Y-%m-%d")
             if d not in leaves:
                 leaves.append(d)
                 month_data["leaves"] = leaves
@@ -110,19 +107,6 @@ total_hours = month_data.get("total_hours", 0)
 remaining = max(target - total_hours, 0)
 progress = min(total_hours / target, 1.0)
 
-# ===== METRICS =====
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("📊 Total", round(total_hours, 2))
-c2.metric("🎯 Target", target)
-c3.metric("⏳ Remaining", round(remaining, 2))
-c4.metric("📅 Working Days", working_days)
-
-# ===== PROGRESS BAR =====
-st.progress(progress)
-st.write(f"📈 {round(progress*100,2)}% completed")
-
-# ===== TABLE =====
 # ===== TABLE =====
 rows = []
 
@@ -138,18 +122,12 @@ for date, d in month_data["days"].items():
     rows.append({
         "Date": dt.strftime("%d/%m"),
         "Status": status,
-
-        # MORNING
         "M-In": d.get("morning", {}).get("in", ""),
         "M-Out": d.get("morning", {}).get("out", ""),
         "M-Hours": d.get("morning", {}).get("hours", 0),
-
-        # AFTERNOON
         "A-In": d.get("afternoon", {}).get("in", ""),
         "A-Out": d.get("afternoon", {}).get("out", ""),
         "A-Hours": d.get("afternoon", {}).get("hours", 0),
-
-        # TOTAL
         "Total": d.get("total", 0)
     })
 
@@ -158,12 +136,25 @@ df = pd.DataFrame(rows)
 if not df.empty:
     df = df.sort_values(by="Date")
 
+# ===== METRICS =====
+c1, c2, c3, c4 = st.columns(4)
+
+c1.metric("📊 Total", round(total_hours, 2))
+c2.metric("🎯 Target", target)
+c3.metric("⏳ Remaining", round(remaining, 2))
+c4.metric("📅 Working Days", working_days)
+
+# ===== PROGRESS =====
+st.progress(progress)
+st.write(f"📈 {round(progress*100,2)}% completed")
+
+# ===== DAILY TABLE =====
 st.subheader("📊 Daily Logs")
 st.dataframe(df, use_container_width=True)
 
 # ===== CHART =====
 st.subheader("📈 Daily Hours")
-if not df.empty:
+if "Total" in df.columns:
     st.line_chart(df.set_index("Date")["Total"])
 
 # ===== WEEKLY =====
@@ -174,30 +165,49 @@ if not df.empty:
     st.bar_chart(weekly)
 
 # ===== SMART INSIGHTS =====
-# ===== SMART INSIGHTS =====
 st.subheader("🧠 Smart Insights")
 
 if total_hours > 0:
 
-    # ===== AVERAGE =====
-    avg = total_hours / working_days if working_days else 0
+    # ✅ CORRECT AVG (based on actual worked days)
+    actual_days = len(df)
+    avg = total_hours / actual_days if actual_days else 0
     st.write(f"📌 Avg/day: **{round(avg,2)} hrs**")
 
-    # ===== REMAINING DAYS =====
-    remaining_days = max(1, working_days - len(df))
+    # ✅ CORRECT REMAINING DAYS (future-based)
+    today = datetime.now().date()
+    year, month = map(int, selected_month.split("-"))
 
-    # ===== STRICT (9 hrs/day) =====
+    remaining_days = 0
+
+    for day in range(1, 32):
+        try:
+            d = datetime(year, month, day).date()
+            date_str = d.strftime("%Y-%m-%d")
+
+            if (
+                d >= today and
+                d.weekday() != 6 and
+                date_str not in holidays
+            ):
+                remaining_days += 1
+        except:
+            pass
+
+    remaining_days = max(1, remaining_days)
+
+    # ===== 9 HOUR MODE =====
     needed_9 = remaining / remaining_days
 
     st.write("### 🎯 Based on 9 hrs/day target")
     if needed_9 > 9:
         st.error(f"⚠️ Need **{round(needed_9,2)} hrs/day** (high pressure)")
     elif needed_9 < 6:
-        st.success(f"✅ You are ahead (only {round(needed_9,2)} hrs/day needed)")
+        st.success(f"✅ You are ahead ({round(needed_9,2)} hrs/day enough)")
     else:
         st.info(f"👉 Maintain **{round(needed_9,2)} hrs/day**")
 
-    # ===== RELAXED (8 hrs/day) =====
+    # ===== 8 HOUR MODE =====
     relaxed_target = working_days * 8
     relaxed_remaining = max(relaxed_target - total_hours, 0)
     needed_8 = relaxed_remaining / remaining_days
@@ -206,6 +216,6 @@ if total_hours > 0:
     if needed_8 > 8:
         st.warning(f"⚠️ Need **{round(needed_8,2)} hrs/day**")
     elif needed_8 < 6:
-        st.success(f"✅ Very relaxed ({round(needed_8,2)} hrs/day enough)")
+        st.success(f"✅ Relaxed ({round(needed_8,2)} hrs/day enough)")
     else:
         st.info(f"👉 Maintain **{round(needed_8,2)} hrs/day**")
