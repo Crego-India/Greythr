@@ -8,9 +8,6 @@ on:
     # 🕒 7:00 PM IST (13:30 UTC)
     - cron: "30 13 * * 1-6"
 
-    # 🕒 7:15 PM IST (13:45 UTC)
-    - cron: "45 13 * * 1-6"
-
   workflow_dispatch:
 
 jobs:
