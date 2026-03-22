@@ -123,6 +123,7 @@ st.progress(progress)
 st.write(f"📈 {round(progress*100,2)}% completed")
 
 # ===== TABLE =====
+# ===== TABLE =====
 rows = []
 
 for date, d in month_data["days"].items():
@@ -137,9 +138,19 @@ for date, d in month_data["days"].items():
     rows.append({
         "Date": dt.strftime("%d/%m"),
         "Status": status,
-        "Morning Hours": d.get("morning", {}).get("hours", 0),
-        "Afternoon Hours": d.get("afternoon", {}).get("hours", 0),
-        "Total Hours": d.get("total", 0)
+
+        # MORNING
+        "M-In": d.get("morning", {}).get("in", ""),
+        "M-Out": d.get("morning", {}).get("out", ""),
+        "M-Hours": d.get("morning", {}).get("hours", 0),
+
+        # AFTERNOON
+        "A-In": d.get("afternoon", {}).get("in", ""),
+        "A-Out": d.get("afternoon", {}).get("out", ""),
+        "A-Hours": d.get("afternoon", {}).get("hours", 0),
+
+        # TOTAL
+        "Total": d.get("total", 0)
     })
 
 df = pd.DataFrame(rows)
