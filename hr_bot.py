@@ -53,9 +53,10 @@ def login(page):
 # ===== ENSURE LOGIN =====
 def ensure_logged_in(page):
     page.goto(HR_URL)
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(5000)
 
-    if not is_logged_in(page):
+    # If login page detected → login
+    if page.locator("text=Login").count() > 0:
         print("🔐 Logging in...")
         login(page)
     else:
