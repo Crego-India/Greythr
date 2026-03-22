@@ -24,7 +24,14 @@ def log_time():
 
 # ===== HUMAN DELAY =====
 def human_delay():
-    delay = random.randint(30, 300)
+    ist = get_ist()
+
+    # Evening logout → larger randomness
+    if ist.hour >= 18:
+        delay = random.randint(0, 900)  # up to 15 min
+    else:
+        delay = random.randint(30, 300)
+
     print(f"⏳ Human delay: {delay}s")
     time.sleep(delay)
 
