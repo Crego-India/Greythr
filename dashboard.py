@@ -178,12 +178,13 @@ if not df.empty:
     df = df.sort_values(by="Date")
 
 # ===== METRICS =====
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 
 c1.metric("📊 Total", round(total_hours, 2))
 c2.metric("🎯 Target", target)
 c3.metric("⏳ Remaining", round(remaining, 2))
 c4.metric("📅 Working Days", working_days)
+c5.metric("⏳ Days Left", remaining_days)
 
 # ===== PROGRESS =====
 st.progress(progress)
