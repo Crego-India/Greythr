@@ -107,6 +107,36 @@ total_hours = month_data.get("total_hours", 0)
 remaining = max(target - total_hours, 0)
 progress = min(total_hours / target, 1.0)
 
+# ===== REMAINING DAYS (FIXED LOGIC) =====
+def get_remaining_days(selected_month, holidays):
+    now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    today = now.date()
+
+    year, month = map(int, selected_month.split("-"))
+    cal = calendar.monthcalendar(year, month)
+
+    remaining_days = 0
+
+    for week in cal:
+        for i, day in enumerate(week):
+
+            if day == 0:
+                continue
+
+            d = datetime(year, month, day).date()
+            date_str = d.strftime("%Y-%m-%d")
+
+            if (
+                d > today and          # exclude today
+                i != 6 and             # exclude Sunday
+                date_str not in holidays
+            ):
+                remaining_days += 1
+
+    return max(1, remaining_days)
+
+remaining_days = get_remaining_days(selected_month, holidays)
+
 # ===== TABLE =====
 rows = []
 
@@ -169,34 +199,12 @@ st.subheader("🧠 Smart Insights")
 
 if total_hours > 0:
 
-    # ✅ CORRECT AVG (based on actual worked days)
+    # AVG (correct)
     actual_days = len(df)
     avg = total_hours / actual_days if actual_days else 0
     st.write(f"📌 Avg/day: **{round(avg,2)} hrs**")
 
-    # ✅ CORRECT REMAINING DAYS (future-based)
-    today = datetime.now().date()
-    year, month = map(int, selected_month.split("-"))
-
-    remaining_days = 0
-
-    for day in range(1, 32):
-        try:
-            d = datetime(year, month, day).date()
-            date_str = d.strftime("%Y-%m-%d")
-
-            if (
-                d >= today and
-                d.weekday() != 6 and
-                date_str not in holidays
-            ):
-                remaining_days += 1
-        except:
-            pass
-
-    remaining_days = max(1, remaining_days)
-
-    # ===== 9 HOUR MODE =====
+    # 9 hour mode
     needed_9 = remaining / remaining_days
 
     st.write("### 🎯 Based on 9 hrs/day target")
@@ -207,7 +215,7 @@ if total_hours > 0:
     else:
         st.info(f"👉 Maintain **{round(needed_9,2)} hrs/day**")
 
-    # ===== 8 HOUR MODE =====
+    # 8 hour mode
     relaxed_target = working_days * 8
     relaxed_remaining = max(relaxed_target - total_hours, 0)
     needed_8 = relaxed_remaining / remaining_days
