@@ -13,8 +13,6 @@ TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO = st.secrets["REPO_NAME"]
 FILE_PATH = st.secrets["FILE_PATH"]
 
-data = load_data()
-
 # ===== LOAD DATA =====
 def load_data():
     with open(FILE, "r") as f:
@@ -53,6 +51,8 @@ def save_to_github(data):
         st.success("✅ Saved to GitHub")
     else:
         st.error(f"❌ GitHub update failed: {update.text}")
+
+data = load_data()
 
 # ===== HEADER =====
 col1, col2 = st.columns([4, 1])
