@@ -5,8 +5,11 @@ on:
     # 🕒 1:00 PM IST (07:30 UTC)
     - cron: "30 7 * * 1-6"
 
-    # 🕒 6:50 PM IST (13:20 UTC)
-    - cron: "20 13 * * 1-6"
+    # 🕒 7:00 PM IST (13:30 UTC)
+    - cron: "30 13 * * 1-6"
+
+    # 🕒 7:15 PM IST (13:45 UTC)
+    - cron: "45 13 * * 1-6"
 
   workflow_dispatch:
 
@@ -34,3 +37,12 @@ jobs:
           HR_USERNAME: ${{ secrets.HR_USERNAME }}
           HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
           ACTION: "logout"
+
+      # 👇 ADD THIS AT END
+      - name: Commit updated hours
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add hours.json
+          git commit -m "update hours" || echo "No changes"
+          git push
