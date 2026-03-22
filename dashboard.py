@@ -20,9 +20,19 @@ def load_data():
 
 def save_to_github(data):
     url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
-    headers = {"Authorization": f"token {TOKEN}"}
 
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    # Get latest SHA
     res = requests.get(url, headers=headers)
+
+    if res.status_code != 200:
+        st.error("❌ Failed to fetch file from GitHub")
+        return
+
     sha = res.json()["sha"]
 
     content = base64.b64encode(
@@ -35,11 +45,12 @@ def save_to_github(data):
         "sha": sha
     }
 
-    requests.put(url, headers=headers, json=payload)
+    update = requests.put(url, headers=headers, json=payload)
 
-data = load_data()
-
-st.set_page_config(page_title="Attendance Dashboard", layout="wide")
+    if update.status_code == 200:
+        st.success("✅ Saved to GitHub")
+    else:
+        st.error(f"❌ GitHub update failed: {update.text}")
 
 # ===== HEADER =====
 col1, col2 = st.columns([4, 1])
