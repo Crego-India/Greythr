@@ -23,43 +23,69 @@ def log_time():
     print("🕒 IST:", ist)
 
 # ===== HUMAN DELAY =====
-def human_delay():
+def human_delay(action):
     ist = get_ist()
 
-    if ist.hour == 9 or (ist.hour < 13 and ist.hour >= 9):
-        # Morning window: 9:28 – 9:35
+    # ── Morning Login: 9:28 – 9:35 ──
+    if action == "login" and 9 <= ist.hour < 13:
         target_minute = random.randint(28, 35)
         target_second = random.randint(0, 59)
         target = ist.replace(hour=9, minute=target_minute, second=target_second, microsecond=0)
 
         wait = (target - ist).total_seconds()
         if wait > 0:
-            print(f"⏳ Waiting until 09:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            print(f"⏳ [Morning Login] Waiting until 09:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
             time.sleep(wait)
         else:
-            print("⏳ Already in morning window, proceeding")
+            print("⏳ Already in morning login window, proceeding")
 
-    elif ist.hour == 13 or (ist.hour == 14 and ist.minute < 5):
-        # Afternoon window: 13:55 – 14:00
+    # ── Afternoon Login: 13:55 – 14:00 ──
+    elif action == "login" and (ist.hour == 13 or (ist.hour == 14 and ist.minute < 10)):
         target_minute = random.randint(55, 59)
         target_second = random.randint(0, 59)
         target = ist.replace(hour=13, minute=target_minute, second=target_second, microsecond=0)
 
         wait = (target - ist).total_seconds()
         if wait > 0:
-            print(f"⏳ Waiting until 13:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            print(f"⏳ [Afternoon Login] Waiting until 13:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
             time.sleep(wait)
         else:
-            print("⏳ Already in afternoon window, proceeding")
+            print("⏳ Already in afternoon login window, proceeding")
 
-    elif ist.hour >= 18:
-        delay = random.randint(0, 900)
-        print(f"⏳ Evening delay: {delay}s")
-        time.sleep(delay)
+    # ── Lunch Logout: 13:00 – 13:05 ──
+    elif action == "logout" and (ist.hour == 12 or (ist.hour == 13 and ist.minute < 10)):
+        target_minute = random.randint(0, 5)
+        target_second = random.randint(0, 59)
+        target = ist.replace(hour=13, minute=target_minute, second=target_second, microsecond=0)
+
+        wait = (target - ist).total_seconds()
+        if wait > 0:
+            print(f"⏳ [Lunch Logout] Waiting until 13:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            time.sleep(wait)
+        else:
+            print("⏳ Already in lunch logout window, proceeding")
+
+    # ── Evening Logout: 18:55 – 19:10 ──
+    elif action == "logout" and (ist.hour == 18 or (ist.hour == 19 and ist.minute < 15)):
+        if ist.hour == 18:
+            target_hour   = 18
+            target_minute = random.randint(55, 59)
+        else:
+            target_hour   = 19
+            target_minute = random.randint(0, 10)
+        target_second = random.randint(0, 59)
+        target = ist.replace(hour=target_hour, minute=target_minute, second=target_second, microsecond=0)
+
+        wait = (target - ist).total_seconds()
+        if wait > 0:
+            print(f"⏳ [Evening Logout] Waiting until {target_hour}:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            time.sleep(wait)
+        else:
+            print("⏳ Already in evening logout window, proceeding")
 
     else:
-        delay = random.randint(30, 300)
-        print(f"⏳ Default delay: {delay}s")
+        delay = random.randint(30, 120)
+        print(f"⏳ [Fallback] Delay: {delay}s")
         time.sleep(delay)
 
 # ===== DATA HANDLING =====
@@ -187,7 +213,7 @@ def handle_action(action):
         page = browser.new_page()
 
         log_time()
-        human_delay()
+        human_delay(action)
 
         ensure_logged_in(page)
         page.wait_for_timeout(3000)
@@ -229,3 +255,13 @@ def handle_action(action):
 if __name__ == "__main__":
     action = os.getenv("ACTION")
     handle_action(action)
+```
+
+---
+
+**All 4 final windows:**
+```
+Morning Login   → cron 9:10 AM  → signs in  9:28 – 9:35 AM  ✅
+Lunch Logout    → cron 12:40 PM → signs out 1:00 – 1:05 PM  ✅
+Afternoon Login → cron 1:40 PM  → signs in  1:55 – 2:00 PM  ✅
+Evening Logout  → cron 6:30 PM  → signs out 6:55 – 7:10 PM  ✅
