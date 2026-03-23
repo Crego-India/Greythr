@@ -1,0 +1,22 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # runs every day at 8:00 AM IST (02:30 UTC)
+    - cron: "30 2 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Keep alive ping
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git commit --allow-empty -m "keepalive [skip ci]"
+          git push
