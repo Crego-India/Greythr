@@ -86,6 +86,11 @@
           "morning": {"in": "09:30:57", "out": "13:13:02", "hours": 3.7},
           "afternoon": {"in": "13:58:44", "out": "18:33:45", "hours": 4.58},
           "total": 8.28
+        },
+        "2026-03-23": {
+          "morning": {"in": "09:42:43", "out": "", "hours": 0},
+          "afternoon": {},
+          "total": 0
         }
       },
       "total_hours": 146.35
