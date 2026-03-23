@@ -26,13 +26,41 @@ def log_time():
 def human_delay():
     ist = get_ist()
 
-    if ist.hour >= 18:
-        delay = random.randint(0, 900)  # up to 15 min
+    if ist.hour == 9 or (ist.hour < 13 and ist.hour >= 9):
+        # Morning window: 9:28 – 9:35
+        target_minute = random.randint(28, 35)
+        target_second = random.randint(0, 59)
+        target = ist.replace(hour=9, minute=target_minute, second=target_second, microsecond=0)
+
+        wait = (target - ist).total_seconds()
+        if wait > 0:
+            print(f"⏳ Waiting until 09:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            time.sleep(wait)
+        else:
+            print("⏳ Already in morning window, proceeding")
+
+    elif ist.hour == 13 or (ist.hour == 14 and ist.minute < 5):
+        # Afternoon window: 13:55 – 14:00
+        target_minute = random.randint(55, 59)
+        target_second = random.randint(0, 59)
+        target = ist.replace(hour=13, minute=target_minute, second=target_second, microsecond=0)
+
+        wait = (target - ist).total_seconds()
+        if wait > 0:
+            print(f"⏳ Waiting until 13:{target_minute:02d}:{target_second:02d} IST ({int(wait)}s)")
+            time.sleep(wait)
+        else:
+            print("⏳ Already in afternoon window, proceeding")
+
+    elif ist.hour >= 18:
+        delay = random.randint(0, 900)
+        print(f"⏳ Evening delay: {delay}s")
+        time.sleep(delay)
+
     else:
         delay = random.randint(30, 300)
-
-    print(f"⏳ Human delay: {delay}s")
-    time.sleep(delay)
+        print(f"⏳ Default delay: {delay}s")
+        time.sleep(delay)
 
 # ===== DATA HANDLING =====
 def load_data():
@@ -59,7 +87,6 @@ def record_time(event_type):
     today, now = get_today()
     month_key = get_month_key(now)
 
-    # Create month if not exists
     if month_key not in data["months"]:
         data["months"][month_key] = {
             "days": {},
@@ -68,7 +95,6 @@ def record_time(event_type):
 
     month = data["months"][month_key]
 
-    # Create day if not exists
     if today not in month["days"]:
         month["days"][today] = {
             "morning": {},
@@ -84,7 +110,6 @@ def record_time(event_type):
 
     elif event_type == "logout_lunch":
         day["morning"]["out"] = time_str
-
         if "in" in day["morning"]:
             t1 = datetime.strptime(day["morning"]["in"], "%H:%M:%S")
             t2 = datetime.strptime(time_str, "%H:%M:%S")
@@ -96,14 +121,12 @@ def record_time(event_type):
 
     elif event_type == "logout_evening":
         day["afternoon"]["out"] = time_str
-
         if "in" in day["afternoon"]:
             t1 = datetime.strptime(day["afternoon"]["in"], "%H:%M:%S")
             t2 = datetime.strptime(time_str, "%H:%M:%S")
             hours = (t2 - t1).seconds / 3600
             day["afternoon"]["hours"] = round(hours, 2)
 
-        # Calculate total
         total = 0
         if "hours" in day["morning"]:
             total += day["morning"]["hours"]
@@ -112,7 +135,6 @@ def record_time(event_type):
 
         day["total"] = round(total, 2)
 
-        # Update monthly total
         month["total_hours"] = round(
             sum(d.get("total", 0) for d in month["days"].values()), 2
         )
