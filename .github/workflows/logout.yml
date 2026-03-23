@@ -2,11 +2,11 @@ name: HR Logout
 
 on:
   schedule:
-    # 🕒 1:00 PM IST (07:30 UTC)
-    - cron: "30 7 * * 1-6"
+    # 🕒 12:40 PM IST (07:10 UTC) — arrives before 1:00 PM
+    - cron: "10 7 * * 1-6"
 
-    # 🕒 7:00 PM IST (13:30 UTC)
-    - cron: "30 13 * * 1-6"
+    # 🕒 6:30 PM IST (13:00 UTC) — arrives before 6:55 PM
+    - cron: "00 13 * * 1-6"
 
   workflow_dispatch:
 
@@ -35,6 +35,13 @@ jobs:
           HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
           ACTION: "logout"
 
+      - name: Commit updated hours
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add hours.json
+          git commit -m "update hours" || echo "No changes"
+          git push
       # 👇 ADD THIS AT END
       - name: Commit updated hours
         run: |
