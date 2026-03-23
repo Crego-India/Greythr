@@ -255,13 +255,3 @@ def handle_action(action):
 if __name__ == "__main__":
     action = os.getenv("ACTION")
     handle_action(action)
-```
-
----
-
-**All 4 final windows:**
-```
-Morning Login   → cron 9:10 AM  → signs in  9:28 – 9:35 AM  ✅
-Lunch Logout    → cron 12:40 PM → signs out 1:00 – 1:05 PM  ✅
-Afternoon Login → cron 1:40 PM  → signs in  1:55 – 2:00 PM  ✅
-Evening Logout  → cron 6:30 PM  → signs out 6:55 – 7:10 PM  ✅
