@@ -2,11 +2,11 @@ name: HR Login
 
 on:
   schedule:
-    # 🕒 9:25 AM IST (03:55 UTC)
-    - cron: "55 3 * * 1-6"
+    # 🕒 9:10 AM IST (03:40 UTC)
+    - cron: "40 3 * * 1-6"
 
-    # 🕒 2:00 PM IST (08:30 UTC)
-    - cron: "30 8 * * 1-6"
+    # 🕒 1:40 PM IST (08:10 UTC)
+    - cron: "10 8 * * 1-6"
 
   workflow_dispatch:
 
@@ -35,7 +35,6 @@ jobs:
           HR_PASSWORD: ${{ secrets.HR_PASSWORD }}
           ACTION: "login"
 
-      # 👇 ADD THIS AT END
       - name: Commit updated hours
         run: |
           git config user.name "github-actions"
